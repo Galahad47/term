@@ -1,64 +1,58 @@
-import ephem
 import numpy as np
-from astropy.coordinates 
-from astropy.time import Time
 import datetime
-import matplotlib.pyplot as  plt
+import matplotlib.pyplot as plt
 import json
 
+time_input = input("Введите время (ГГГГ-ММ-ДД ЧЧ:ММ:СС): ")
+time = datetime.datetime.strptime(time_input, "%Y-%m-%d %H:%M:%S")
 
-#time
-format = "%Y-%m-%d %H:%M:%S"
+# Функция для вычисления позиции Солнца
+def calculate_sun_position(time):
+    days = (time - datetime.datetime(2000, 1, 1, 12, 0, 0)).total_seconds() / (24 * 3600)
+    obliquity = np.radians(23.44)
 
-time_input = input("Введите время в формате Год-Месяц-День Часы:Минуты:Секунды")
-time = datetime.datetime.strptime(time_input,format)
-formatted_time = time.strftime(format)
-# time_str = "2024-02-17 18:00:00"
+    mean_longitude = np.radians((280.460 + 0.9856474 * days) % 360)
+    mean_anomaly = np.radians((357.528 + 0.9856003 * days) % 360)
 
+    ecliptic_longitude = mean_longitude + np.radians(1.915) * np.sin(mean_anomaly) + np.radians(0.020) * np.sin(2 * mean_anomaly)
 
+    declination = np.arcsin(np.sin(obliquity) * np.sin(ecliptic_longitude))
 
-
-
-def terminatorcoords(date_time):
-    eye = ephem.Observer()
-    eye.date = date_time
-    terminator_coords = []
-    for lon in np.arange(-180,180,1):
-        eye.lon = np.radians(lon)
-
-        for lat in np.arange(-90,90):
-            eye.lat = np.radians(lat)
-            sun = ephem.Sun()
-            sun.compute(eye)
+    return declination
 
 
-            if abs(np.degrees(sun.alt))<0.5:
+def terminatorcoords(time):
+    declination = calculate_sun_position(time)
+    coords = []
 
-                terminator_coords.append((np.degrees(eye.lat),np.degrees(eye.lon)))
+    for lon in range(-180, 180):
+        # Терминатор проходит по линии, где угол между горизонтом и солнцем равен 0 (полдень)
+        lat = np.degrees(np.arcsin(-np.cos(np.radians(lon)) * np.cos(declination)))
+        coords.append({"lat": lat, "lon": lon})
     
-    
-    return terminator_coords
+    return coords
 
+# Сохранение координат терминатора и построения примера в виде графика
 
+terminator_coords = terminatorcoords(time)
+if terminator_coords:
+    with open('terminator.json', 'w') as file:
+        json.dump(terminator_coords, file)
 
-date_time = datetime.datetime.strptime(formatted_time, format)
-terminator_coords = terminatorcoords(date_time)
-print("cords")
-for coord in terminator_coords:
-    print(f"lat {coord[0]}, lon {coord[1]}")
-
-
-lat = terminator_coords[0]
-lon = terminator_coords[1]
-
-
-plt.plot(lat,lon)
-
-plt.show()
-
-
-
-
-coords = {terminator_coords[0],terminator_coords[1]}
-with open("coords.json") as file:
-    json.dump(coords,file)
+    latitudes = [coord["lat"] for coord in terminator_coords]
+    longitudes = [coord["lon"] for coord in terminator_coords]
+    print (latitudes, longitudes)
+    # plt.figure(figsize=(10, 5))
+    # plt.plot(longitudes, latitudes, label='Терминатор', color='orange')
+    # plt.fill_between(longitudes, min(latitudes), latitudes, where=np.array(latitudes) >= min(latitudes),
+    #                  color='skyblue', alpha=0.5, label='Ночная сторона')
+    # plt.xlabel('Долгота')
+    # plt.ylabel('Широта')
+    # plt.title('Терминатор на карте Земли')
+    # plt.xlim(-180, 180)
+    # plt.ylim(-90, 90)
+    # plt.grid()
+    # plt.axhline(0, color='black', lw=1)
+    # plt.axvline(0, color='black', lw=1)
+    # plt.legend()
+    # plt.show()
