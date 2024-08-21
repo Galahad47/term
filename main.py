@@ -56,5 +56,3 @@ if terminator_coords:
     # plt.axvline(0, color='black', lw=1)
     # plt.legend()
     # plt.show()
-else:
-    print("Не обнаружены координаты терминатора на заданное время.")
